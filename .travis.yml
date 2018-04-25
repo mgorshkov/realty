@@ -1,0 +1,43 @@
+language: cpp
+compiler: gcc
+os:
+  - linux
+dist: trusty
+sudo: false
+
+matrix:
+  include:
+    # works on Precise and Trusty
+    - os: linux
+      addons:
+        apt:
+          sources:
+            - sourceline: "deb http://us.archive.ubuntu.com/ubuntu/ xenial main universe"
+            - ubuntu-toolchain-r-test
+          packages:
+            - g++-7
+            - liblapack-dev
+            - libopenblas-dev
+      env:
+        - MATRIX_EVAL="CC=gcc-7 && CXX=g++-7"
+        - BUILD_DIR=build
+        - PROJECT_NAME=realty
+before_install:
+  - eval "${MATRIX_EVAL}"
+install:
+  - git clone https://github.com/davisking/dlib.git
+  - cd dlib
+  - cmake .
+  - cmake --build .
+  - cd ..
+script:
+  - mkdir ${BUILD_DIR}
+  - cd ${BUILD_DIR}
+  - cmake ..
+  - cmake --build .
+  - cmake --build . --target package
+deploy:
+  - provider: script
+    skip_cleanup: true
+    script:
+    - curl -T ${TRAVIS_BUILD_DIR}/${BUILD_DIR}/${PROJECT_NAME}-0.0.$TRAVIS_BUILD_NUMBER-Linux.deb -umgorshkov:$BINTRAY_API_KEY "https://api.bintray.com/content/mgorshkov/otus/${PROJECT_NAME}/1/${PROJECT_NAME}-0.0.$TRAVIS_BUILD_NUMBER-Linux.deb;deb_distribution=trusty;deb_component=main;deb_architecture=amd64;publish=1"

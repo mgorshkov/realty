@@ -49,12 +49,24 @@ std::vector<Rclss::SampleType> Rclss::ReadInput()
 void Rclss::Run()
 {
     using OvoTrainer = dlib::one_vs_one_trainer<dlib::any_trainer<SampleType> >;
-    OvoTrainer trainer;    
+    OvoTrainer trainer;
     using RbfKernel = dlib::radial_basis_kernel<SampleType>;
     dlib::krr_trainer<RbfKernel> rbfTrainer;
     rbfTrainer.set_kernel(RbfKernel(0.1));
     trainer.set_trainer(rbfTrainer);
     std::vector<SampleType> samples = ReadInput();
+
+    using LabelsType = dlib::matrix<double, 6, 1>;
+    std::vector<LabelsType> labels;
+    for (auto sample : samples)
+    {
+        LabelsType label;
+        if (sample(6) == 1)
+           label(0) = 1;
+        else
+           label(0) = 0;
+        labels.push_back(label);
+    }
     dlib::one_vs_one_decision_function<OvoTrainer> df = trainer.train(samples, labels);
 
     dlib::serialize(mModelFileName) << df;

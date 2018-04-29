@@ -50,6 +50,73 @@ std::vector<Rclst::SampleType> Rclst::ReadInput()
 
 void Rclst::Run()
 {
+    using OvoTrainer = dlib::one_vs_one_trainer<dlib::any_trainer<SampleType>>;
+    OvoTrainer trainer;
+    using PolyKernel = dlib::polynomial_kernel<SampleType>;
+    using RbfKernel = dlib::radial_basis_kernel<SampleType>;
+    dlib::krr_trainer<RbfKernel> rbfTrainer;
+    rbfTrainer.set_kernel(RbfKernel(0.1));
+    trainer.set_trainer(rbfTrainer);
     std::vector<SampleType> samples = ReadInput();
 
+    using LabelsType = std::vector<double>;
+    LabelsType labels;
+    for (auto sample : samples)
+    {
+        // 86.116781;55.335492;2;4326901.00;54.00;7.00;5;5 
+        double longitude = sample(0);
+        double latitude = sample(1);
+        int rooms = sample(2);
+        int priceCategory;
+        double price = sample(3);
+        if (price <= 1000000.0)
+            priceCategory = 1;
+        else if (price <= 5000000.0)
+            priceCategory = 2;
+        else if (price <= 10000000.0)
+            priceCategory = 3;
+        else
+            priceCategory = 4;
+        double totalArea = sample(4);
+        int totalAreaCategory;
+        if (totalArea <= 10.0)
+            totalAreaCategory = 1;
+        else if (totalArea <= 20.0)
+            totalAreaCategory = 2;
+        else if (totalArea <= 30.0)
+            totalAreaCategory = 3;
+        else if (totalArea <= 40.0)
+            totalAreaCategory = 4;
+        else if (totalArea <= 50.0)
+            totalAreaCategory = 5;
+        else if (totalArea <= 60.0)
+            totalAreaCategory = 6;
+        else if (totalArea <= 70.0)
+            totalAreaCategory = 7;
+        else if (totalArea <= 100.0)
+            totalAreaCategory = 8;
+        else
+            totalAreaCategory = 9;
+        double kitchenArea = sample(5);
+        int kitchenAreaCategory;
+        if (kitchenArea <= 6.0)
+            kitchenAreaCategory = 1;
+        else if (kitchenArea <= 8.0)
+            kitchenAreaCategory = 2;
+        else if (kitchenArea <= 10.0)
+            kitchenAreaCategory = 3;
+        else if (kitchenArea <= 20.0)
+            kitchenAreaCategory = 4;
+        else if (kitchenArea <= 30.0)
+            kitchenAreaCategory = 5;
+        else
+            kitchenAreaCategory = 6;
+        int isFirstLast = sample(6) ? 1 : 0;
+
+        double label = rooms + priceCategory * 10 + totalAreaCategory * 100 + kitchenAreaCategory * 1000 + isFirstLast * 10000;
+        labels.push_back(label);
+    }
+    dlib::one_vs_one_decision_function<OvoTrainer, dlib::decision_function<PolyKernel>, dlib::decision_function<RbfKernel>> df = trainer.train(samples, labels);
+
+    dlib::serialize(mModelFileName) << df;
 }

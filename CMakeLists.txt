@@ -13,6 +13,8 @@ endif()
 include_directories(dlib)
 link_directories(dlib/dlib)
 
+find_package(Threads REQUIRED)
+
 add_executable(rclst
 	defines.h
 	utils.cpp

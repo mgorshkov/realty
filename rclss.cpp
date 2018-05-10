@@ -2,9 +2,8 @@
 #include <vector>
 #include <string>
 
-#include <dlib/svm_threaded.h>
-
 #include "rclss.h"
+#include "utils.h"
 
 Rclss::Rclss(const std::string& aModelFileName, std::istream& aStream)
     : mModelFileName(aModelFileName)
@@ -31,9 +30,9 @@ static std::vector<std::string> split(const std::string &str, char d)
     return r;
 }
 
-std::vector<Rclss::SampleType> Rclss::ReadInput()
+SampleVector Rclss::ReadInput()
 {
-    std::vector<SampleType> samples;
+    SampleVector samples;
     std::string line;
     while (std::getline(mStream, line))
     {
@@ -48,16 +47,69 @@ std::vector<Rclss::SampleType> Rclss::ReadInput()
 
 void Rclss::Run()
 {
-    using OvoTrainer = dlib::one_vs_one_trainer<dlib::any_trainer<SampleType>>;
+    dlib::one_vs_one_decision_function<OvoTrainer, dlib::decision_function<PolyKernel>, dlib::decision_function<RbfKernel>> df;
+    SampleVector samples;
+    LabelVector labels;
 
-    dlib::one_vs_one_decision_function<OvoTrainer> df;
-    dlib::serialize(mModelFileName) << df;
+    std::ifstream inputFile(mModelFileName);
+    dlib::deserialize(df, inputFile);
+    dlib::deserialize(samples, inputFile);
+    dlib::deserialize(labels, inputFile);
 
-    std::vector<SampleType> samples = ReadInput();
+    LabelVector labelsSorted = labels;
+    std::sort(labelsSorted.begin(), labelsSorted.end());
 
-    using LabelsType = std::vector<double>;
-    for (auto sample : samples)
+    SampleVector input = ReadInput();
+
+    for (auto data : input)
     {
-        std::cout << "predicted label: "<< df(sample) << std::endl;
+        SampleVector foundPoints;
+        double label = df(data);
+#ifdef DEBUG_PRINT
+        std::cout << label << std::endl;
+#endif
+        if (std::binary_search(labelsSorted.begin(), labelsSorted.end(), label))
+        {
+            auto it = labels.begin();
+            while ((it = std::find_if(it, labels.end(), [label](const auto& l){ return l == label; })) != labels.end())
+            {
+                std::size_t index = std::distance(labels.begin(), it);
+                foundPoints.push_back(samples[index]);
+                it++;
+            }
+        }
+        std::sort(foundPoints.begin(), foundPoints.end(),
+            [&data](const auto& pointLeft, const auto& pointRight)
+            {
+                double longitude = data(0);
+                double latitude = data(1);
+
+                double longitudeLeft = pointLeft(0);
+                double latitudeLeft = pointLeft(1);
+
+                double longitudeRight = pointRight(0);
+                double latitudeRight = pointRight(1);
+
+                double distanceLeft = Distance(latitude, longitude, latitudeLeft, longitudeLeft);
+                double distanceRight = Distance(latitude, longitude, latitudeRight, longitudeRight);
+
+                return distanceLeft < distanceRight;
+            });
+        for (auto point : foundPoints)
+        {
+            // 86.116781;55.335492;2;4326901.00;54.00;7.00;5;5\n
+            std::cout << std::fixed << std::setprecision(6)
+                << point(0) << ";"
+                << point(1) << ";"
+                << std::setprecision(0)
+                << point(2) << ";"
+                << std::setprecision(2)
+                << point(3) << ";"
+                << point(4) << ";"
+                << point(5) << ";"
+                << std::setprecision(0)
+                << point(6) << ";"
+                << point(7) << std::endl;
+        }
     }
 }

@@ -3,6 +3,7 @@
 #include <string>
 #include <iostream>
 #include <dlib/clustering.h>
+#include "defines.h"
 
 class Rclst
 {
@@ -12,8 +13,7 @@ public:
     void Run();
 
 private:
-    using SampleType = dlib::matrix<double, 7, 1>;
-    std::vector<SampleType> ReadInput();
+    SampleVector ReadInput();
 
     int mNumClusters;
     std::string mModelFileName;

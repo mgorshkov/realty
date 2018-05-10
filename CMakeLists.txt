@@ -14,11 +14,17 @@ include_directories(dlib)
 link_directories(dlib/dlib)
 
 add_executable(rclst
+	defines.h
+	utils.cpp
+	utils.h
 	rclst.h
 	rclst.cpp
 	rclst_main.cpp)
 
 add_executable(rclss
+	defines.h
+	utils.cpp
+	utils.h
 	rclss.h
 	rclss.cpp
 	rclss_main.cpp)
@@ -32,11 +38,15 @@ set_target_properties(rclst rclss PROPERTIES
 target_link_libraries(rclst
 	${CMAKE_THREAD_LIBS_INIT}
 	dlib
+	blas
+	lapack
 )
 
 target_link_libraries(rclss
 	${CMAKE_THREAD_LIBS_INIT}
 	dlib
+	blas
+	lapack
 )
 
 install(TARGETS rclst DESTINATION bin)

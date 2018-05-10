@@ -1,8 +1,6 @@
 #include <iostream>
 #include <vector>
 
-#include <dlib/svm_threaded.h>
-
 #include "rclst.h"
 
 Rclst::Rclst(int aNumClusters, const std::string& aModelFileName, std::istream& aStream)
@@ -31,18 +29,22 @@ static std::vector<std::string> split(const std::string &str, char d)
     return r;
 }
 
-std::vector<Rclst::SampleType> Rclst::ReadInput()
+SampleVector Rclst::ReadInput()
 {
-    std::vector<SampleType> samples;
+    SampleVector samples;
     std::string line;
     while (std::getline(mStream, line))
     {
+        // 86.116781;55.335492;2;4326901.00;54.00;7.00;5;5
         auto splitted = split(line, ';');
+#ifdef DEBUG_PRINT
+        std::cout << splitted.size() << std::endl;
+#endif
         SampleType sample;
-        for (int i = 0; i < 6; ++i)       
+        for (int i = 0; i < 8; ++i)       
             sample(i) = std::atof(splitted[i].c_str());
-        double flag = (splitted[6] == splitted[7] || splitted[6] == "1") ? 0 : 1;
-        sample(6) = flag;
+        double firstLastFloor = (splitted[6] == splitted[7] || splitted[6] == "1") ? 0 : 1;
+        sample(8) = firstLastFloor;
         samples.push_back(sample);
     }
     return samples;
@@ -50,22 +52,16 @@ std::vector<Rclst::SampleType> Rclst::ReadInput()
 
 void Rclst::Run()
 {
-    using OvoTrainer = dlib::one_vs_one_trainer<dlib::any_trainer<SampleType>>;
     OvoTrainer trainer;
-    using PolyKernel = dlib::polynomial_kernel<SampleType>;
-    using RbfKernel = dlib::radial_basis_kernel<SampleType>;
     dlib::krr_trainer<RbfKernel> rbfTrainer;
     rbfTrainer.set_kernel(RbfKernel(0.1));
     trainer.set_trainer(rbfTrainer);
-    std::vector<SampleType> samples = ReadInput();
+    SampleVector samples = ReadInput();
 
-    using LabelsType = std::vector<double>;
-    LabelsType labels;
+    LabelVector labels;
     for (auto sample : samples)
     {
         // 86.116781;55.335492;2;4326901.00;54.00;7.00;5;5 
-        double longitude = sample(0);
-        double latitude = sample(1);
         int rooms = sample(2);
         int priceCategory;
         double price = sample(3);
@@ -75,8 +71,10 @@ void Rclst::Run()
             priceCategory = 2;
         else if (price <= 10000000.0)
             priceCategory = 3;
-        else
+        else if (price <= 50000000.0)
             priceCategory = 4;
+        else
+            priceCategory = 5;
         double totalArea = sample(4);
         int totalAreaCategory;
         if (totalArea <= 10.0)
@@ -111,12 +109,18 @@ void Rclst::Run()
             kitchenAreaCategory = 5;
         else
             kitchenAreaCategory = 6;
-        int isFirstLast = sample(6) ? 1 : 0;
+        int isFirstLastFloor = sample(8) ? 1 : 0;
 
-        double label = rooms + priceCategory * 10 + totalAreaCategory * 100 + kitchenAreaCategory * 1000 + isFirstLast * 10000;
+        double label = rooms * 10000 + priceCategory * 1000 + totalAreaCategory * 100 + kitchenAreaCategory * 10 + isFirstLastFloor * 1;
+#ifdef DEBUG_PRINT
+        std::cout << sample << ":" << label << std::endl;
+#endif
         labels.push_back(label);
     }
     dlib::one_vs_one_decision_function<OvoTrainer, dlib::decision_function<PolyKernel>, dlib::decision_function<RbfKernel>> df = trainer.train(samples, labels);
 
-    dlib::serialize(mModelFileName) << df;
+    std::ofstream output(mModelFileName);
+    dlib::serialize(df, output);
+    dlib::serialize(samples, output);
+    dlib::serialize(labels, output);
 }

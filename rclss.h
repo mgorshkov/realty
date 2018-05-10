@@ -1,7 +1,7 @@
 #pragma once
 
 #include <iostream>
-#include <dlib/clustering.h>
+#include "defines.h"
 
 class Rclss
 {
@@ -11,8 +11,7 @@ public:
     void Run();
 
 private:
-    using SampleType = dlib::matrix<double, 6, 1>;
-    std::vector<SampleType> ReadInput();
+    SampleVector ReadInput();
 
     std::string mModelFileName;
     std::istream& mStream;

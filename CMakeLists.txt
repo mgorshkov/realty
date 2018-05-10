@@ -29,8 +29,14 @@ add_executable(rclss
 	rclss.cpp
 	rclss_main.cpp)
 
-set_target_properties(rclst rclss PROPERTIES
-	COMPILE_OPTIONS -Wall -Wextra
+set_target_properties(rclst PROPERTIES
+	COMPILE_OPTIONS -Wpedantic -Wall -Wextra
+	CMAKE_CXX_STANDARD 14
+	CMAKE_CXX_STANDARD_REQUIRED ON
+)
+
+set_target_properties(rclss PROPERTIES
+	COMPILE_OPTIONS -Wpedantic -Wall -Wextra
 	CMAKE_CXX_STANDARD 14
 	CMAKE_CXX_STANDARD_REQUIRED ON
 )

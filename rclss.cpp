@@ -68,7 +68,7 @@ void Rclss::Run()
 #ifdef DEBUG_PRINT
         std::cout << label << std::endl;
 #endif
-        if (std::binary_search(labelsSorted.begin(), labelsSorted.end(), label))
+        auto GetPoints = [&](double label)
         {
             auto it = labels.begin();
             while ((it = std::find_if(it, labels.end(), [label](const auto& l){ return l == label; })) != labels.end())
@@ -77,7 +77,29 @@ void Rclss::Run()
                 foundPoints.push_back(samples[index]);
                 it++;
             }
+        };
+        if (!std::binary_search(labelsSorted.begin(), labelsSorted.end(), label))
+        {
+            double lowerDiff{0};
+            double upperDiff{0};
+            auto lower = std::lower_bound(labelsSorted.begin(), labelsSorted.end(), label);
+            if (lower != labelsSorted.end())
+                lowerDiff = std::abs(*lower - label);
+            auto upper = std::upper_bound(labelsSorted.begin(), labelsSorted.end(), label);
+            if (upper != labelsSorted.end())
+                upperDiff = std::abs(*upper - label);
+            if (!lowerDiff && !upperDiff)
+            {
+                std::cout << "not found" << std::endl;
+                continue;
+            }
+            if (lowerDiff < upperDiff)
+                label = *lower;
+            else
+                label = *upper;
         }
+        GetPoints(label);
+
         std::sort(foundPoints.begin(), foundPoints.end(),
             [&data](const auto& pointLeft, const auto& pointRight)
             {

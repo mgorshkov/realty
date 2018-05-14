@@ -13,7 +13,7 @@ int main(int argc, char* argv[])
         }
 
         int numclusters = std::atoi(argv[1]);
-        if (numclusters == 0)
+        if (numclusters <= 0)
         {
             std::cerr << "Incorrect number of clusters: " << argv[1] << std::endl;
             return 1;

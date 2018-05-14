@@ -47,7 +47,7 @@ SampleVector Rclss::ReadInput()
 
 void Rclss::Run()
 {
-    dlib::one_vs_one_decision_function<OvoTrainer, dlib::decision_function<PolyKernel>, dlib::decision_function<RbfKernel>> df;
+    dlib::one_vs_one_decision_function<OvoTrainer, dlib::decision_function<LinearKernel>> df;
     SampleVector samples;
     LabelVector labels;
 
@@ -61,7 +61,7 @@ void Rclss::Run()
 
     SampleVector input = ReadInput();
 
-    for (auto data : input)
+    for (const auto& data : input)
     {
         SampleVector foundPoints;
         double label = df(data);

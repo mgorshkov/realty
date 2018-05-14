@@ -41,9 +41,12 @@ SampleVector Rclst::ReadInput()
         std::cout << splitted.size() << std::endl;
 #endif
         SampleType sample;
-        for (int i = 0; i < 8; ++i)       
+        for (int i = 0; i < 8; ++i)
             sample(i) = std::atof(splitted[i].c_str());
         double firstLastFloor = (splitted[6] == splitted[7] || splitted[6] == "1") ? 0 : 1;
+#ifdef DEBUG_PRINT
+        std::cout << splitted[6] << " " << splitted[7] << " " << firstLastFloor << std::endl;
+#endif
         sample(8) = firstLastFloor;
         samples.push_back(sample);
     }
@@ -53,72 +56,32 @@ SampleVector Rclst::ReadInput()
 void Rclst::Run()
 {
     OvoTrainer trainer;
-    dlib::krr_trainer<RbfKernel> rbfTrainer;
-    rbfTrainer.set_kernel(RbfKernel(0.1));
-    trainer.set_trainer(rbfTrainer);
+
+    dlib::svr_linear_trainer<LinearKernel> linearTrainer;
+
+    LinearKernel kernel;
+    trainer.set_trainer(linearTrainer);
+
     SampleVector samples = ReadInput();
 
+    std::vector<SampleType> initialCenters;
+
+    dlib::pick_initial_centers(mNumClusters, initialCenters, samples, kernel);
+
+    std::vector<unsigned long> assignments = spectral_cluster(kernel, samples, mNumClusters);
+
     LabelVector labels;
-    for (auto sample : samples)
+    for (auto a : assignments)
     {
-        // 86.116781;55.335492;2;4326901.00;54.00;7.00;5;5 
-        int rooms = sample(2);
-        int priceCategory;
-        double price = sample(3);
-        if (price <= 1000000.0)
-            priceCategory = 1;
-        else if (price <= 5000000.0)
-            priceCategory = 2;
-        else if (price <= 10000000.0)
-            priceCategory = 3;
-        else if (price <= 50000000.0)
-            priceCategory = 4;
-        else
-            priceCategory = 5;
-        double totalArea = sample(4);
-        int totalAreaCategory;
-        if (totalArea <= 10.0)
-            totalAreaCategory = 1;
-        else if (totalArea <= 20.0)
-            totalAreaCategory = 2;
-        else if (totalArea <= 30.0)
-            totalAreaCategory = 3;
-        else if (totalArea <= 40.0)
-            totalAreaCategory = 4;
-        else if (totalArea <= 50.0)
-            totalAreaCategory = 5;
-        else if (totalArea <= 60.0)
-            totalAreaCategory = 6;
-        else if (totalArea <= 70.0)
-            totalAreaCategory = 7;
-        else if (totalArea <= 100.0)
-            totalAreaCategory = 8;
-        else
-            totalAreaCategory = 9;
-        double kitchenArea = sample(5);
-        int kitchenAreaCategory;
-        if (kitchenArea <= 6.0)
-            kitchenAreaCategory = 1;
-        else if (kitchenArea <= 8.0)
-            kitchenAreaCategory = 2;
-        else if (kitchenArea <= 10.0)
-            kitchenAreaCategory = 3;
-        else if (kitchenArea <= 20.0)
-            kitchenAreaCategory = 4;
-        else if (kitchenArea <= 30.0)
-            kitchenAreaCategory = 5;
-        else
-            kitchenAreaCategory = 6;
-        int isFirstLastFloor = sample(8) ? 1 : 0;
-
-        double label = rooms * 10000 + priceCategory * 1000 + totalAreaCategory * 100 + kitchenAreaCategory * 10 + isFirstLastFloor * 1;
-#ifdef DEBUG_PRINT
-        std::cout << sample << ":" << label << std::endl;
-#endif
-        labels.push_back(label);
+        std::cout << a << std::endl;
+        labels.push_back(a);
     }
-    dlib::one_vs_one_decision_function<OvoTrainer, dlib::decision_function<PolyKernel>, dlib::decision_function<RbfKernel>> df = trainer.train(samples, labels);
 
+    dlib::one_vs_one_decision_function<OvoTrainer, dlib::decision_function<LinearKernel>> df = trainer.train(samples, labels);
+#ifdef DEBUG_PRINT
+    for (int i = 0; i < samples.size(); ++i)
+        std::cout << "predicted label: "<< df(samples[i])  << ", true label: "<< labels[i] << std::endl;
+#endif
     std::ofstream output(mModelFileName);
     dlib::serialize(df, output);
     dlib::serialize(samples, output);
